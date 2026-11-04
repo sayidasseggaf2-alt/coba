@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jurnal Matang</title>
+<meta name="theme-color" content="#0d1117">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:-apple-system,system-ui,sans-serif;padding:16px;max-width:600px;margin:auto}
+h1{font-size:22px;margin:10px 0}
+.sub{color:#8b949e;font-size:12px;margin-bottom:15px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:16px;margin-bottom:14px}
+input,textarea,select{width:100%;background:#0d1117;border:1px solid #30363d;color:#fff;border-radius:10px;padding:12px;margin:6px 0;font-size:14px}
+textarea{height:140px;resize:none}
+.moods{display:flex;gap:8px;margin:10px 0}
+.mood{font-size:26px;padding:6px 10px;border-radius:10px;border:1px solid transparent;cursor:pointer;opacity:0.4}
+.mood.active{background:#21262d;border-color:#30363d;opacity:1;transform:scale(1.1)}
+.btn{padding:12px;border-radius:10px;border:0;font-weight:700;width:100%;margin-top:8px;cursor:pointer}
+.blue{background:#238636;color:#fff}
+.gray{background:#21262d;color:#fff;border:1px solid #30363d}
+.red{background:#da3633;color:#fff}
+.row{display:flex;gap:8px}
+.row .btn{flex:1}
+.j-item{background:#0d1117;border:1px solid #21262d;border-radius:12px;padding:12px;margin:10px 0}
+.j-head{display:flex;justify-content:space-between;font-size:12px;color:#8b949e}
+.j-title{font-weight:700;margin:6px 0;font-size:15px}
+.j-text{font-size:13px;white-space:pre-wrap;color:#c9d1d9}
+.search{position:sticky;top:0;z-index:9;background:#0d1117;padding:10px 0}
+.stats{display:flex;gap:8px;overflow:auto}
+.stat{background:#21262d;border-radius:10px;padding:8px 12px;font-size:12px;white-space:nowrap}
+</style>
+</head>
+<body>
+<h1>📔 Jurnal Matang</h1>
+<div class="sub">100% Offline • Disimpen di HP • File: jurnal-matang.html</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="card">
+<input id="judul" placeholder="Judul hari ini (opsional)">
+<div class="moods" id="moodList"></div>
+<textarea id="isi" placeholder="Apa yang kamu rasakan hari ini? Cerita aja..."></textarea>
+<div class="row">
+<button class="btn blue" onclick="simpan()">💾 SIMPAN</button>
+<button class="btn gray" onclick="clearForm()">BATAL</button>
+</div>
+</div>
+
+<div class="card">
+<div class="search">
+<input id="cari" placeholder="🔍 Cari jurnal lama..." oninput="render()">
+<div class="row" style="margin-top:8px">
+<button class="btn gray" onclick="exportTXT()">📤 Export TXT</button>
+<button class="btn gray" onclick="exportJSON()">📦 Backup JSON</button>
+</div>
+<input type="file" id="importFile" style="display:none" onchange="importJSON(event)">
+<button class="btn gray" onclick="document.getElementById('importFile').click()">📥 Import Backup</button>
+</div>
+<div id="list"></div>
+</div>
+
+<script>
+let moods=['😄','😊','😐','😔','😭','😡','🥰','😴'];
+let curMood='😄'; let editId=null;
+function initMood(){
+ document.getElementById('moodList').innerHTML=moods.map(m=>`<div class="mood ${m==curMood?'active':''}" onclick="setMood('${m}')">${m}</div>`).join('');
+}
+function setMood(m){curMood=m; initMood();}
+function getData(){return JSON.parse(localStorage.getItem('jurnal_matang_v2')||'[]')}
+function saveData(d){localStorage.setItem('jurnal_matang_v2',JSON.stringify(d))}
+function simpan(){
+ let judul=document.getElementById('judul').value;
+ let isi=document.getElementById('isi').value;
+ if(!isi.trim())return alert('Isi dulu jir');
+ let data=getData();
+ if(editId){
+  let i=data.findIndex(x=>x.id==editId);
+  data[i]={...data[i],judul,isi,mood:curMood};
+  editId=null;
+ }else{
+  data.unshift({id:Date.now(),tgl:new Date().toLocaleString('id-ID',{dateStyle:'full',timeStyle:'short'}),judul,isi,mood:curMood});
+ }
+ saveData(data); clearForm(); render();
+}
+function clearForm(){document.getElementById('judul').value='';document.getElementById('isi').value='';editId=null;curMood='😄';initMood();}
+function render(){
+ let q=document.getElementById('cari').value.toLowerCase();
+ let data=getData().filter(x=>(x.judul+x.isi).toLowerCase().includes(q));
+ document.getElementById('list').innerHTML=data.map(j=>`
+  <div class="j-item">
+   <div class="j-head"><span>${j.mood} ${j.tgl}</span><span><a onclick="edit(${j.id})" style="color:#58a6ff">Edit</a> • <a onclick="hapus(${j.id})" style="color:#f85149">Hapus</a></span></div>
+   <div class="j-title">${j.judul||'(Tanpa Judul)'}</div>
+   <div class="j-text">${j.isi}</div>
+  </div>
+ `).join('')||'<p style="text-align:center;color:#8b949e;margin-top:20px">Belum ada jurnal</p>';
+ // stats
+ let all=getData(); let counts={}; all.forEach(a=>counts[a.mood]=(counts[a.mood]||0)+1);
+ document.getElementById('stats').innerHTML=`<div class="stat">📝 Total: ${all.length}</div>`+Object.entries(counts).map(([k,v])=>`<div class="stat">${k} ${v}</div>`).join('');
+}
+function edit(id){
+ let j=getData().find(x=>x.id==id);
+ document.getElementById('judul').value=j.judul; document.getElementById('isi').value=j.isi; curMood=j.mood; editId=id; initMood(); window.scrollTo(0,0);
+}
+function hapus(id){if(confirm('Hapus jurnal ini?')){saveData(getData().filter(x=>x.id!=id));render()}}
+function exportTXT(){
+ let data=getData(); if(!data.length)return alert('Kosong');
+ let txt=data.map(d=>`[${d.tgl}] ${d.mood} ${d.judul}\n${d.isi}\n================`).join('\n\n');
+ download(txt,'jurnal-'+new Date().toISOString().slice(0,10)+'.txt','text/plain');
+}
+function exportJSON(){
+ let data=getData(); download(JSON.stringify(data,null,2),'backup-jurnal-'+Date.now()+'.json','application/json');
+}
+function importJSON(e){
+ let file=e.target.files[0]; if(!file)return;
+ let r=new FileReader(); r.onload=function(){try{let d=JSON.parse(r.result); saveData(d); render(); alert('Berhasil import '+d.length+' jurnal')}catch{alert('File salah')}}; r.readAsText(file);
+}
+function download(content,name,type){
+ let blob=new Blob([content],{type}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+}
+initMood(); render();
+</script>
+</body>
+</html>
