@@ -87,8 +87,9 @@ addEventListener('resize',rs);rs();
 
 // ---------- mulai ----------
 (async()=>{
- if(location.hash==='#edit')localStorage.setItem('owner','1');
- if(localStorage.getItem('owner')==='1')document.body.classList.add('owner');
+ localStorage.removeItem('owner');
+ if(location.hash==='#edit-HUSEIN112233'){localStorage.setItem('owner2','1');history.replaceState(null,'',location.pathname+location.search)}
+ if(localStorage.getItem('owner2')==='1')document.body.classList.add('owner');
  S=await DB.get('s');
  if(!S){try{const r=await fetch('data.json');if(r.ok)S=await r.json()}catch{}}
  if(!S?.slides)S=def();
